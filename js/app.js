@@ -14,10 +14,11 @@
 
   // ─── 核心常量 ──────────────────────────────────────────────
   const xpToNext     = (level) => Math.min(220, 48 + level * 7);
-  const WRONG_COOLDOWN_SERIAL = 4;   // 答错后至少隔4题才能再出（原8，降低让错题来得更快）
+  const WRONG_COOLDOWN_SERIAL = 4;   // 答错后至少隔4题才能再出
   const MASTERY_MIN_CORRECT   = 3;   // 累计答对≥3 → 已掌握
   const MASTERY_FIRST_GAP     = 14;  // 首次掌握后第一次复习间隔
   const MAX_HEARTS            = 5;   // 心愿力上限
+  const HISTORY_WINDOW        = 15;  // 强制冷却：同一题15题内不重复出现
 
   // ─── 鼓励语池 ─────────────────────────────────────────────
   const OK_MSGS = [
