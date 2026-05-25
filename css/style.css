@@ -523,6 +523,9 @@ body {
 .feedback-title.bad { color: var(--red);   text-shadow: 0 0 14px rgba(251,113,133,0.45); }
 .feedback-answer, .feedback-exp { margin: 0.35rem 0; font-size: 0.92rem; color: var(--muted); }
 .feedback-exp { color: var(--text); line-height: 1.6; }
+.fb-label { display: block; font-size: .8rem; font-weight: 700; margin-bottom: .3rem; letter-spacing: .01em; }
+.fb-label.ok  { color: var(--green); }
+.fb-label.bad { color: var(--amber); }
 
 /* ── 提示横条 ── */
 .review-hint {

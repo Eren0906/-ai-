@@ -29,6 +29,29 @@
   ];
   const WRONG_MSGS = ["再记一次！", "差一点点！", "加油！", "记住它！", "下次一定！"];
 
+  // ─── 解析区情绪鼓励语 ─────────────────────────────────────
+  const CORRECT_ENCOURAGE = [
+    "💡 来巩固一下这个知识点：",
+    "📌 记住它，下次更快：",
+    "🧠 理解了就刻进脑子里：",
+    "✨ 继续保持！再深化一下：",
+    "⚡ 趁热打铁，知识点在这里：",
+    "🎯 看看为什么是这个答案：",
+    "🔍 加深印象：",
+    "🚀 你答对了，再深入一点：",
+  ];
+  const WRONG_ENCOURAGE = [
+    "💪 没关系！来看看关键在哪里：",
+    "🤝 错了才有进步，一起分析：",
+    "📖 看完这里，你下次肯定会：",
+    "🌟 每错一次，记忆就深一次：",
+    "💡 这个知识点容易混淆，注意看：",
+    "🔥 AI训练师都是这样成长的！加油：",
+    "✊ 记住这里，下次遇到就稳了：",
+    "😸 猫猫相信你，下次一定行：",
+    "🎈 别气馁，看完就会了：",
+  ];
+
   function okMsg(streak) {
     if (streak >= 12) return pickRandom(OK_MSGS[3]);
     if (streak >= 8)  return pickRandom(OK_MSGS[2]);
@@ -44,6 +67,7 @@
     moduleSerial: { interview: 0, skills: 0 },
     qStats:    { interview: {}, skills: {} },
     hearts:    { interview: MAX_HEARTS, skills: MAX_HEARTS },
+    recentHistory: { interview: [], skills: [] },
   });
 
   let progress = loadProgress();
@@ -72,6 +96,10 @@
                         skills:    (p.qStats?.skills    && typeof p.qStats.skills    === "object") ? p.qStats.skills    : {} },
         hearts:       { interview: p.hearts?.interview ?? MAX_HEARTS,
                         skills:    p.hearts?.skills    ?? MAX_HEARTS },
+        recentHistory: {
+          interview: Array.isArray(p.recentHistory?.interview) ? p.recentHistory.interview.slice(-HISTORY_WINDOW) : [],
+          skills:    Array.isArray(p.recentHistory?.skills)    ? p.recentHistory.skills.slice(-HISTORY_WINDOW)    : [],
+        },
       };
     } catch { return defaultProgress(); }
   }
@@ -130,6 +158,10 @@
   };
   const passesNotSameAsLast = (q, relaxLast) =>
     relaxLast || !lastPickedSourceId || baseIdOf(q) !== lastPickedSourceId;
+  const notInHistory = (q) => {
+    const hist = progress.recentHistory?.[currentModule];
+    return !hist || !hist.includes(baseIdOf(q));
+  };
   const eligible = (q, serial, relaxLast) =>
     isCooldownClear(q, serial) && passesNotSameAsLast(q, relaxLast);
 
@@ -282,10 +314,9 @@
     return { ...base, sourceId: base.id, _masteryReview: true };
   }
 
-  // ─── 抽题算法（遗忘曲线版） ───────────────────────────────
+  // ─── 抽题算法（全随机 + 遗忘曲线 + 15题历史窗口） ──────────
   function pickQuestion() {
-    const bank   = window.AI_TRAINER_QUESTIONS.filter(q => q.module === currentModule);
-    const st     = progress[currentModule];
+    const bank    = window.AI_TRAINER_QUESTIONS.filter(q => q.module === currentModule);
     const weakMap = progress.weak[currentModule];
     const weakIds = Object.keys(weakMap).filter(id => Number(weakMap[id]) < 2 && !isMastered(id));
     const serial  = moduleSerialNow();
@@ -298,7 +329,9 @@
       return serial >= Number(s.nextAt);
     }).filter(id => {
       const t = nextAllowedPickSerial[id];
-      return (t == null || Number(t) <= serial) && (lastPickedSourceId ? id !== lastPickedSourceId : true);
+      return (t == null || Number(t) <= serial)
+        && (lastPickedSourceId ? id !== lastPickedSourceId : true)
+        && !(progress.recentHistory?.[currentModule] || []).includes(id);
     });
 
     const injectMastery = masteryDueIds.length && Math.random() < 0.38;
@@ -310,21 +343,20 @@
 
     // 2. 错题池（高频出现，帮助记忆）
     let weakPool = weakIds.map(id => bank.find(q => q.id === id)).filter(Boolean)
-      .filter(q => eligible(q, serial, false));
+      .filter(q => notInHistory(q) && eligible(q, serial, false));
     if (!weakPool.length && weakIds.length)
       weakPool = weakIds.map(id => bank.find(q => q.id === id)).filter(Boolean)
-        .filter(q => eligible(q, serial, true));
+        .filter(q => notInHistory(q) && eligible(q, serial, true));
 
     const injectWeak = weakPool.length && Math.random() < 0.35;
     if (injectWeak) return { q: pickRandom(weakPool), fromWeak: true, mastery: false };
 
-    // 3. 正常新题池（按等级范围）
-    const stretch = 4;
-    const byLevel = list => list.filter(q => q.level <= Math.min(33, st.level + stretch) && !isMastered(q.id));
-    let pool = byLevel(bank).filter(q => eligible(q, serial, false));
-    if (!pool.length) pool = byLevel(bank).filter(q => eligible(q, serial, true));
+    // 3. 全题库随机（不按等级过滤），先用历史窗口约束，逐步放宽
+    let pool = bank.filter(q => !isMastered(q.id) && notInHistory(q) && eligible(q, serial, false));
+    if (!pool.length) pool = bank.filter(q => !isMastered(q.id) && notInHistory(q) && eligible(q, serial, true));
+    if (!pool.length) pool = bank.filter(q => !isMastered(q.id) && notInHistory(q) && isCooldownClear(q, serial));
+    // 历史窗口放宽（题库数量不足时）
     if (!pool.length) pool = bank.filter(q => !isMastered(q.id) && eligible(q, serial, false));
-    if (!pool.length) pool = bank.filter(q => !isMastered(q.id) && eligible(q, serial, true));
     if (!pool.length) pool = bank.filter(q => !isMastered(q.id) && isCooldownClear(q, serial));
     if (!pool.length) pool = bank.filter(q => !isMastered(q.id));
     if (!pool.length) {
@@ -510,6 +542,12 @@
     const { q } = pickQuestion();
     lastPickedSourceId = baseIdOf(q);
     currentQuestion = q;
+
+    // 记录历史窗口（持久化，防止刷新后重复）
+    const hist = progress.recentHistory[currentModule];
+    hist.push(baseIdOf(q));
+    if (hist.length > HISTORY_WINDOW) hist.splice(0, hist.length - HISTORY_WINDOW);
+    saveProgress();
 
     const qCard = document.getElementById("question-card");
     qCard.classList.remove("boss-level");
@@ -892,7 +930,15 @@
       : isMatch ? "连线完成，但有误配" : WRONG_MSGS[Math.floor(Math.random() * WRONG_MSGS.length)];
     title.className = "feedback-title " + (ok ? "ok" : "bad");
     ans.textContent = ok ? "" : "正确答案：" + rightText;
-    exp.textContent = currentQuestion.explanation;
+
+    // 情绪鼓励 + 解析
+    const encourage = ok ? pickRandom(CORRECT_ENCOURAGE) : pickRandom(WRONG_ENCOURAGE);
+    exp.textContent = "";
+    const fbLabel = document.createElement("span");
+    fbLabel.className = "fb-label " + (ok ? "ok" : "bad");
+    fbLabel.textContent = encourage;
+    exp.appendChild(fbLabel);
+    exp.appendChild(document.createTextNode(currentQuestion.explanation));
 
     // 禁用所有交互
     ["fill-input", "fill-submit"].forEach(id => {
