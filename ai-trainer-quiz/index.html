@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>AI 训练师闯关 · 面试 &amp; 技能双模块</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="bg-pattern" aria-hidden="true"></div>
+
+  <!-- 礼花容器 -->
+  <div id="confetti-container" aria-hidden="true"></div>
+
+  <!-- 升级庆典遮罩 -->
+  <div id="levelup-overlay" aria-live="assertive">
+    <div class="lu-card">
+      <div class="lu-emoji">🎉</div>
+      <div class="lu-text">升级了！</div>
+      <div class="lu-level">等级 <strong id="lu-level">2</strong></div>
+      <div class="lu-rank" id="lu-rank">⚔️ 青铜见习</div>
+    </div>
+  </div>
+
+  <header class="top-bar">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">🤖</span>
+      <div>
+        <h1>AI 训练师闯关</h1>
+        <p class="brand-sub">遗忘曲线 · 打怪升级 · 知识刻脑</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn ghost" id="btn-reset" title="清空进度">重置</button>
+    </div>
+  </header>
+
+  <!-- 首页 -->
+  <main class="shell" id="view-home">
+    <section class="hero card">
+      <h2>选模块，开始闯关</h2>
+      <p class="lead">答错的题会根据「遗忘曲线」高频复现；连续答对后进入「已掌握」，按间隔递增来考你。❤️ 心愿力用完不影响继续，但要连胜才能恢复！</p>
+      <div class="module-grid">
+        <button type="button" class="module-card interview" data-module="interview">
+          <span class="badge">印象分</span>
+          <h3>🗣️ 面试模块</h3>
+          <p>行业趋势、公司图谱、面试话术，把概念讲清楚。</p>
+          <div id="home-stats-interview" class="card-stats">Lv.1 · 0/0 已掌握</div>
+          <span class="cta">开始战斗 ⚔️</span>
+        </button>
+        <button type="button" class="module-card skills" data-module="skills">
+          <span class="badge solid">硬技能</span>
+          <h3>🛠️ 技能模块</h3>
+          <p>5W2H、规则文档、质检、SFT/RLHF，工作必会。</p>
+          <div id="home-stats-skills" class="card-stats">Lv.1 · 0/0 已掌握</div>
+          <span class="cta">开始战斗 ⚔️</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="card ranks-legend">
+      <h3>段位系统（每模块独立）</h3>
+      <ul class="rank-list">
+        <li><span style="color:#cd7f32">⚔️ 青铜见习</span>  等级 1–11 · 打牢基础概念</li>
+        <li><span style="color:#94a3b8">🥈 白银实战</span>  等级 12–22 · 面试与日常任务</li>
+        <li><span style="color:#fbbf24">🏆 黄金精通</span>  等级 23–33 · 复杂场景综合判断</li>
+      </ul>
+      <div class="type-legend">
+        <h4>题型说明</h4>
+        <div class="type-chips">
+          <span class="type-chip">📝 单选</span>
+          <span class="type-chip">✏️ 填空</span>
+          <span class="type-chip">🔗 连线</span>
+          <span class="type-chip">☑️ 多选</span>
+          <span class="type-chip">⚖️ 判断</span>
+          <span class="type-chip">🔢 排序</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 答题页 -->
+  <main class="shell hidden" id="view-play" aria-live="polite">
+    <!-- XP 浮动数字 -->
+    <div class="xp-float" id="xp-float">+15 XP</div>
+
+    <div class="play-top card slim">
+      <button type="button" class="btn ghost" id="btn-back">← 返回</button>
+      <div class="play-meta">
+        <span id="play-module-label" class="pill"></span>
+        <span id="play-rank-label" class="pill rank"></span>
+        <span class="pill">Lv.<strong id="play-level">1</strong>/33</span>
+        <span class="pill streak" id="play-streak">🔥 0</span>
+        <span class="pill hearts" id="play-hearts">❤️❤️❤️❤️❤️</span>
+      </div>
+      <div class="xp-bar-wrap">
+        <div class="xp-bar" id="xp-bar"></div>
+      </div>
+    </div>
+
+    <section class="card question-card" id="question-card">
+      <div class="q-type" id="q-type"></div>
+      <h2 class="q-text" id="q-text"></h2>
+      <div id="q-body" class="q-body"></div>
+      <div class="feedback hidden" id="feedback">
+        <p class="feedback-title" id="feedback-title"></p>
+        <p class="feedback-answer" id="feedback-answer"></p>
+        <p class="feedback-exp" id="feedback-exp"></p>
+        <button type="button" class="btn primary" id="btn-next">继续 →</button>
+      </div>
+    </section>
+
+    <section class="card slim review-hint" id="review-hint">
+      <span>📌</span>
+      <span>累计答对 3 次 → 进入「已掌握」，按遗忘曲线间隔复习。❤️ 连续答对 5 题恢复 1 颗心。答错的题 4 道后就会再次出现，帮你强化记忆。</span>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>题目来源：课程笔记第一周·第二周·第三周 | 本地存档，不上传服务器</p>
+  </footer>
+
+  <script src="js/questions.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
